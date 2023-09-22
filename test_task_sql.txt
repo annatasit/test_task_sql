@@ -1,0 +1,132 @@
+Задачи:
+1. Вывести ФИО всех сотрудников женского пола
+
+select pers_name 
+from sql_test_personell
+where gender = 'F'
+
+2. Вывести ФИО и дату рождения всех сотрудников, которые родились весной
+
+select pers_name,  pers_bd
+from sql_test_personell
+where to_char(pers_bd,'MM') between '03' and '05'
+
+3. Вывести ФИО всех сотрудников из отдела продаж
+
+select pers_name
+from sql_test_personell p
+join sql_test_department d on p.department_id=d.department_id
+where department_name ='Продажи'
+
+Или
+
+select pers_name
+from sql_test_personell
+where department_id = 1
+
+4. Вывести Названия отделов, в которых кол-во сотрудников не превышает 3
+
+select department_name
+from sql_test_personell p
+join sql_test_department d 
+on p.department_id=d.department_id
+group by department_name
+having count(*) <= 3
+
+5. Вывести ФИО всех сотрудников, которые получают зп выше средней по компании
+
+select pers_name
+from sql_test_personell 
+where pers_salary > (
+  select avg(pers_salary)
+  from sql_test_personell)
+
+6. Вывести ФИО всех сотрудников, которые получают зп выше средней по своему отделу
+
+select pers_name
+from sql_test_personell p
+join (select department_id, avg(pers_salary) as avg_salary
+    from sql_test_personell
+    group by department_id) a
+on p.department_id=a.department_id
+where pers_salary > avg_salary
+
+
+Через оконную функцию:
+
+select pers_name
+from (select pers_name, pers_salary, 
+  avg(pers_salary) over (partition by department_id) as avg_salary
+  from sql_test_personell) a
+where pers_salary > avg_salary
+
+7. Вывести ФИО сотрудников старше 40 лет
+
+select pers_name
+from sql_test_personell
+where trunc(months_between(sysdate, pers_bd)/12) > 40
+
+8. Вывести список всех сотрудников, чье имя начинается с буквы "М" и заканчивается 'Л'
+
+select *
+from sql_test_personell
+where upper(pers_name) like '% М%Л %'
+
+9. Вывести список все сотрудников, которые родились в нечетный месяц года
+
+select *
+from sql_test_personell
+where mod(extract(month from pers_bd), 2)!=0
+
+10. Собрать полный адрес компании из таблицы sql_test_address, где каждый элемент адреса будет разделен запятыми
+
+select (country||', '||city||', '||street||', '||building_numb||', '||office) address
+from sql_test_address
+
+11. Вывести ФИО всех сотрудников - иностранцев (запись в БД произведена латиницей)
+
+select pers_name
+from sql_test_personell
+where regexp_like (pers_name, '[a-z]’)
+
+12. Необходимо выбрать одного сотрудника для представления компании в благотворительном
+забеге. Выведите список потенциальных кандидатов, которые соответствуют хотя бы 3-м
+любым из нижеперечисленных условий:
+1. Руководитель
+2. Мужчина
+3. Работает в отделе маркетинга
+4. Старше 30 лет
+5. Имеет оклад выше 70 тысяч руб.
+
+select *
+from sql_test_personell
+where chief_id is null
+and gender = 'M'
+and department_id = 2
+and trunc(months_between(SYSDATE,pers_bd)/12) > 30
+and pers_salary > 70000
+select pers_name
+from (
+  select pers_name,
+    case
+      when chief_id is null then +1
+      else 0
+    end C1,
+    case
+      when gender = 'M' then +1
+      else 0
+    end C2,
+    case
+      when department_id = 2 then +1
+      else 0
+    end C3,
+    case
+      when trunc(months_between(SYSDATE,pers_bd)/12) > 30 then +1
+      else 0
+    end C4,
+    case
+      when pers_salary > 70000 then +1
+      else 0
+    end C5
+  from sql_test_personell) t
+where C1+C2+C3+C4+C5>=3
